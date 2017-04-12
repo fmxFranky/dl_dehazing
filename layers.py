@@ -3,14 +3,16 @@ import tensorflow as tf
 
 
 def get_filter(shape, init_mode="truncated_normal", name="filter"):
-    with tf.variable_scope(name):
-        if init_mode in ["truncated_normal", "random_normal", "random_uniform", "random_gamma", "random_possion", "zeros", "ones"]:
-            return getattr(tf, init_mode)(shape=shape)
-        elif init_mode is "he_init":
-            return tf.random_normal(shape, stddev=np.sqrt(2.0 / shape[0] / shape[1] / (shape[2] + shape[3]) * 2), name="he_init")
+    # with tf.variable_scope(name):
+    if init_mode in ["truncated_normal", "random_normal", "random_uniform", "random_gamma", "random_possion", "zeros", "ones"]:
+        return tf.Variable(getattr(tf, init_mode)(shape=shape), name=name)
+    elif init_mode is "he_init":
+        return tf.Variable(tf.random_normal(shape, stddev=np.sqrt(2.0 / shape[0] / shape[1] / (shape[2] + shape[3]) * 2)), name=name)
+    elif init_mode is "xavier_init":
+        return tf.get_variable(name, shape=shape, initializer=tf.contrib.layers.xavier_initializer(False))
 
 
-def conv(batch_input, out_channels, filter_size=3, filter_init_mode="truncated_normal", stride=2, padding="SAME", add_bias=False, name="conv"):
+def conv(batch_input, out_channels, filter_size=3, filter_init_mode="truncated_normal", stride=2, padding="SAME", add_bias=True, name="conv"):
     with tf.variable_scope(name):
         in_channels = batch_input.get_shape().as_list()[-1]
         filter = get_filter(shape=[filter_size, filter_size, in_channels,
@@ -19,12 +21,12 @@ def conv(batch_input, out_channels, filter_size=3, filter_init_mode="truncated_n
         batch_output = tf.nn.conv2d(input=batch_input, filter=filter,
                                     strides=strides, padding=padding)
         if add_bias is True:
-            bias = tf.Variable(tf.zeros([out_channels]), name="bias")
-            batch_output = tf.nn.bias_add(conv, bias)
+            bias = tf.Variable(tf.zeros(out_channels), name="bias")
+            batch_output = tf.nn.bias_add(batch_output, bias)
         return batch_output
 
 
-def deconv(batch_input, out_channels, filter_size=3, filter_init_mode="truncated_normal", stride=2, padding="SAME", add_bias=False, name="deconv"):
+def deconv(batch_input, out_channels, filter_size=3, filter_init_mode="truncated_normal", stride=2, padding="SAME", add_bias=True, name="deconv"):
     with tf.variable_scope(name):
         batch, height, width, in_channels = batch_input.get_shape().as_list()
         output_shape = [batch, height * 2, width * 2, out_channels]

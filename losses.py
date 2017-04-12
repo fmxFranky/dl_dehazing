@@ -7,17 +7,18 @@ from keras.applications.vgg19 import VGG19
 from keras.models import Model
 
 
-def pixel_loss(real, fake, norm="l2", name="pixel_loss"):
-    with tf.variable_scope(name):
+def def_pixel_loss(real, fake, norm="l2", weight=1, name="pixel_loss"):
+    with tf.name_scope(name):
         if norm is "l2":
             loss = tf.losses.mean_squared_error(real, fake)
         else:
             loss = tf.losses.absolute_difference(real, fake)
-        return loss
+        summary = tf.summary.scalar(name, loss)
+        return weight * loss, summary
 
 
-def feature_loss(real, fake, net="vgg16", layer="2_2", source="keras", norm="l2", name="feature_loss"):
-    with tf.variable_scope(name):
+def def_feature_loss(real, fake, net="vgg16", layer="2_2", source="keras", norm="l2", weight=1, name="feature_loss"):
+    with tf.name_scope(name):
         if source is "keras":
             base_model = VGG16(weights='imagenet', include_top=False) if net is "vgg16" else VGG19(
                 weights='imagenet', include_top=False)
@@ -29,7 +30,6 @@ def feature_loss(real, fake, net="vgg16", layer="2_2", source="keras", norm="l2"
                 loss = tf.losses.absolute_difference(real_feature, fake_feature)
             else:
                 loss = tf.losses.mean_squared_error(real_feature, fake_feature)
-            return loss
         else:
             vgg = vgg16.Vgg16() if net is "vgg16"else vgg19.Vgg19()
             vgg.build(tf.concat([real, fake], axis=0))
@@ -39,27 +39,32 @@ def feature_loss(real, fake, net="vgg16", layer="2_2", source="keras", norm="l2"
                 loss = tf.losses.absolute_difference(real_feature, fake_feature)
             else:
                 loss = tf.losses.mean_squared_error(real_feature, fake_feature)
-            return loss
+        summary = tf.summary.scalar(name, loss)
+        return weight * loss, summary
 
 
-def disc_loss(disc_real, disc_fake, mode="least_square", name="disc_loss"):
-    with tf.variable_scope(name):
+def def_disc_loss(disc_real, disc_fake, mode="least_square", weight=1, name="disc_loss"):
+    with tf.name_scope(name):
         if mode is "least_square":
             loss = tf.reduc_mean(tf.square(disc_real - 1.0) + tf.square(disc_fake))
         elif mode is "wasserstein":
             loss = tf.reduce_mean(disc_real) - tf.reduce_mean(disc_fake)
-        return loss
+        summary = tf.summary.scalar(name, loss)
+        return weight * loss, summary
 
 
-def adv_loss(disc_fake, mode="least_square", name="adv_loss"):
-    with tf.variable_scope(name):
+def def_adv_loss(disc_fake, mode="least_square", weight=1, name="adv_loss"):
+    with tf.name_scope(name):
         if mode is "least_square":
             loss = tf.reduc_mean(tf.square(disc_fake - 1.0))
         elif mode is "wasserstein":
             loss = - tf.reduce_mean(disc_fake)
-        return loss
+        summary = tf.summary.scalar(name, loss)
+        return weight * loss, summary
 
 
-def gen_loss(adv_loss, content_loss, weights=[1, 1], name="gen_loss"):
-    with tf.variable_scope(name):
-        return weights[0] * adv_loss + weights[1] * content_loss
+def def_gen_loss(adv_loss, content_loss, weights=[1, 1], name="gen_loss"):
+    with tf.name_scope(name):
+        loss = weights[0] * adv_loss + weights[1] * content_loss
+        summary = tf.summary.scalar(name, loss)
+        return loss, summary
