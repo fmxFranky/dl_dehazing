@@ -49,17 +49,24 @@ def generator(batch_input, mode="encoder_decoder", skip_connection=True, nb_res_
             return batch_output
 
 
-def discriminator(batch_input, name="discriminator"):
+def discriminator(batch_input, norm_mode="bn", name="discriminator"):
     with tf.variable_scope(name):
         out_channels = [64, 128, 256, 512]
         conv_blocks = []
-        for c in range(len(out_channels)):
-            conv_blocks.append(conv_block(
-                conv_blocks[-1] if c else batch_input, out_channels[c], stride=1, mode="cab" if c else "ca", activation=leaky_relu, name="conv_{}_{}".format(c + 1, 1)))
-            conv_blocks.append(conv_block(
-                conv_blocks[-1], out_channels[c], stride=2, mode="cab", activation=leaky_relu, name="conv_{}_{}".format(c + 1, 2)))
+        if norm_mode is "bn":
+            for c in range(len(out_channels)):
+                conv_blocks.append(conv_block(
+                    conv_blocks[-1] if c else batch_input, out_channels[c], stride=1, mode="cab" if c else "ca", activation=leaky_relu, name="conv_{}_{}".format(c + 1, 1)))
+                conv_blocks.append(conv_block(
+                    conv_blocks[-1], out_channels[c], stride=2, mode="cab", activation=leaky_relu, name="conv_{}_{}".format(c + 1, 2)))
+        elif norm_mode is "ln":
+            for c in range(len(out_channels)):
+                conv_blocks.append(conv_block(
+                    conv_blocks[-1] if c else batch_input, out_channels[c], stride=1, mode="cal" if c else "ca", activation=leaky_relu, name="conv_{}_{}".format(c + 1, 1)))
+                conv_blocks.append(conv_block(
+                    conv_blocks[-1], out_channels[c], stride=2, mode="cal", activation=leaky_relu, name="conv_{}_{}".format(c + 1, 2)))
         dense_1 = dense(conv_blocks[-1], units=1024, activation=leaky_relu,
                         kernel_initializer=tf.contrib.layers.xavier_initializer(uniform=False), name="dense_1")
         dense_2 = dense(conv_blocks[-1], units=1, activation=tf.sigmoid,
-                        kernel_initializer=tf.truncated_normal_initializer(), name="dense_2")
+                        kernel_initializer=tf.contrib.layers.xavier_initializer(uniform=False), name="dense_2")
         return dense_2

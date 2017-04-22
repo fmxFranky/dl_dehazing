@@ -64,6 +64,9 @@ def batch_norm(x, name='batch_norm'):
                                       scale=tf.Variable(tf.ones(out_channels), name='scale'),
                                       name=name)[0]
 
+def layer_norm(x, name="layer_norm"):
+    return tf.contrib.layers.layer_norm(x, center=True, scale=True, trainable=True, scope=name)
+
 
 def dense(batch_input, units, activation=None, kernel_initializer=tf.contrib.layers.xavier_initializer(uniform=False), name="dense"):
     with tf.variable_scope(name):
@@ -82,6 +85,7 @@ def conv_block(batch_input, out_channels, filter_size=3, filter_init_mode="trunc
         ops = {
             "a": activation,
             "b": batch_norm,
+            "l": layer_norm,
             "p": pixel_shuffler,
         }
         for op in mode[1:]:
@@ -96,6 +100,7 @@ def deconv_block(batch_input, out_channels, filter_size=3, filter_init_mode="tru
         ops = {
             "a": activation,
             "b": batch_norm,
+            "l": layer_norm,
             "d": dropout,
         }
         for op in mode[1:]:

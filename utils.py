@@ -1,64 +1,71 @@
+import os
+import random
+
+import matplotlib.pyplot as plt
 import numpy as np
-import tensorflow as tf
+import skimage.io as io
+from skimage import filters
+
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = '3'
 
 
-def conv_layer(input, filter_shape, stride, name='conv'):
-    with tf.variable_scope(name):
-        conv = tf.nn.conv2d(input, conv_filter(filter_shape), strides=[1, stride, stride, 1], padding='SAME')
-        bias = tf.Variable(tf.zeros(conv.shape.as_list()[3]), name='bias')
-        print(conv, bias)
-        return tf.nn.bias_add(conv, bias)
+def enhaze(J, A):
+    height, width, channels = J.shape
+    t = np.random.uniform(low=0.1, high=1, size=(height, width))
+    t = filters.gaussian(t, sigma=10) + np.random.uniform(low=0.001,
+                                                          high=0.01, size=(height, width))
+    t = np.stack([t, t, t], axis=-1)
+    # t =
+    I = np.uint8(np.array(J).astype('float32') * t + A * (1 - t))
+    io.imshow(I)
+    plt.show()
 
 
-def batch_norm(input, name='BN'):
-    ch_num = input.shape.as_list()[3]
-    with tf.variable_scope(name):
-        return tf.nn.fused_batch_norm(input,
-                                      offset=tf.Variable(tf.zeros(ch_num), name='offset'),
-                                      scale=tf.Variable(tf.ones(ch_num), name='scale'),
-                                      name=name)[0]
+def get_file_lists(train_dir):
+    import tensorflow as tf
+    ground_truths = [train_dir + "{}_Image_.jpg".format(i + 1) for i in range(1449)]
+    hazy_images = [train_dir + "{}_Hazy.jpg".format(i + 1) for i in range(1449)]
+    match = np.array([ground_truths, hazy_images]).transpose()
+    np.random.shuffle(match)
+    gt_list = match[:, 0]
+    hi_list = match[:, 1]
+    return gt_list, hi_list
+
+    # img_names = os.listdir(coco_dir)
+    # random.shuffle(img_names)
+    # imgname_queue = tf.train.string_input_producer(img_names, )
 
 
-def conv_filter(shape, name='filter'):
-    # initialize weights as the way proposed in [He et.cl.:Delving_Deep_into_rectifiers_ICCV_2015_paper]
-    return tf.Variable(tf.random_normal(shape, stddev=np.sqrt(2.0 / shape[0] / shape[1] / (shape[2] + shape[3]) * 2)), name=name)
+def bmp2jpg(input_img_dir, output_img_dir):
+    for img_name in os.listdir(input_img_dir):
+        input_img = io.imread(input_img_dir + img_name)
+        print(output_img_dir + img_name.split('.')[0] + '.jpg')
+        io.imsave(output_img_dir + img_name.split('.')[0] + '.jpg', np.fliplr(input_img))
 
 
-def leaky_relu(x, alpha=0.1, name='lrelu'):
-    with tf.name_scope(name):
-        x = tf.maximum(x, alpha * x)
-        return x
+def get_batch(gt_list, hi_list, height, width, batch_size):
+    tf_gt_list = tf.cast(gt_list, tf.string)
+    tf_hi_list = tf.cast(hi_list, tf.string)
+    input_queue = tf.train.slice_input_producer([tf_gt_list, tf_hi_list], num_epochs=200)
+    gt_contents = tf.read_file(input_queue[0])
+    hi_contents = tf.read_file(input_queue[1])
+    ground_truths = tf.image.decode_jpeg(gt_contents)
+    hazy_images = tf.image.decode_jpeg(hi_contents)
+    ground_truths = tf.image.central_crop(ground_truths, 0.95)
+    hazy_images = tf.image.central_crop(hazy_images, 0.95)
 
 
-def batch_mse_psnr(dbatch):
-    im1, im2 = np.split(dbatch, 2)
-    mse = ((im1 - im2)**2).mean(axis=(1, 2))
-    psnr = np.mean(20 * np.log10(255.0 / np.sqrt(mse)))
-    return np.mean(mse), psnr
+def main():
+    # read("/home/franky/Desktop/train/")
+    J = io.imread("/home/franky/Desktop/vir_tf1.1_py3.5/projects/dl_dehazing/demo_nyud_rgb.jpg")
+    JJ = np.fliplr(J)
+    io.imshow(JJ)
+    plt.show()
+    # A = [255, 255, 255]
+    # enhaze(J, A)
 
 
-def batch_y_psnr(dbatch):
-    r, g, b = np.split(dbatch, 3, axis=3)
-    y = np.squeeze(0.3 * r + 0.59 * g + 0.11 * b)
-    im1, im2 = np.split(y, 2)
-    mse = ((im1 - im2)**2).mean(axis=(1, 2))
-    psnr = np.mean(20 * np.log10(255.0 / np.sqrt(mse)))
-    return psnr
+if __name__ == '__main__':
+    coco_dir = ["/home/franky/Downloads/test2014/", "/home/franky/Downloads/test2015/", "/home/franky/Downloads/train2014/", "/home/franky/Downloads/val2014/"]
 
-
-def batch_ssim(dbatch):
-    im1, im2 = np.split(dbatch, 2)
-    imgsize = im1.shape[1] * im1.shape[2]
-    avg1 = im1.mean((1, 2), keepdims=1)
-    avg2 = im2.mean((1, 2), keepdims=1)
-    std1 = im1.std((1, 2), ddof=1)
-    std2 = im2.std((1, 2), ddof=1)
-    cov = ((im1 - avg1) * (im2 - avg2)).mean((1, 2)) * imgsize / (imgsize - 1)
-    avg1 = np.squeeze(avg1)
-    avg2 = np.squeeze(avg2)
-    k1 = 0.01
-    k2 = 0.03
-    c1 = (k1 * 255)**2
-    c2 = (k2 * 255)**2
-    c3 = c2 / 2
-    return np.mean((2 * avg1 * avg2 + c1) * 2 * (cov + c3) / (avg1**2 + avg2**2 + c1) / (std1**2 + std2**2 + c2))
+    main()
