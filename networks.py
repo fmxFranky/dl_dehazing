@@ -49,7 +49,9 @@ def generator(batch_input, mode="encoder_decoder", skip_connection=True, nb_res_
             return batch_output
 
 
-def discriminator(batch_input, norm_mode="bn", name="discriminator"):
+def discriminator(batch_input, norm_mode="bn", name="discriminator", reuse=False):
+    if reuse is True:
+        tf.get_variable_scope().reuse_variables()
     with tf.variable_scope(name):
         out_channels = [64, 128, 256, 512]
         conv_blocks = []

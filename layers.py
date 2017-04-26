@@ -2,7 +2,7 @@ import numpy as np
 import tensorflow as tf
 
 
-def get_filter(shape, init_mode="truncated_normal", name="filter"):
+def get_filter(shape, init_mode="xavier_init", name="filter"):
     # with tf.variable_scope(name):
     if init_mode in ["truncated_normal", "random_normal", "random_uniform", "random_gamma", "random_possion", "zeros", "ones"]:
         return tf.Variable(getattr(tf, init_mode)(shape=shape), name=name)
@@ -12,7 +12,7 @@ def get_filter(shape, init_mode="truncated_normal", name="filter"):
         return tf.get_variable(name, shape=shape, initializer=tf.contrib.layers.xavier_initializer(False))
 
 
-def conv(batch_input, out_channels, filter_size=3, filter_init_mode="truncated_normal", stride=2, padding="SAME", add_bias=True, name="conv"):
+def conv(batch_input, out_channels, filter_size=3, filter_init_mode="xavier_init", stride=2, padding="SAME", add_bias=True, name="conv"):
     with tf.variable_scope(name):
         in_channels = batch_input.get_shape().as_list()[-1]
         filter = get_filter(shape=[filter_size, filter_size, in_channels,
@@ -26,7 +26,7 @@ def conv(batch_input, out_channels, filter_size=3, filter_init_mode="truncated_n
         return batch_output
 
 
-def deconv(batch_input, out_channels, filter_size=3, filter_init_mode="truncated_normal", stride=2, padding="SAME", add_bias=True, name="deconv"):
+def deconv(batch_input, out_channels, filter_size=3, filter_init_mode="xavier_init", stride=2, padding="SAME", add_bias=True, name="deconv"):
     with tf.variable_scope(name):
         batch, height, width, in_channels = batch_input.get_shape().as_list()
         output_shape = [batch, height * 2, width * 2, out_channels]
@@ -64,13 +64,13 @@ def batch_norm(x, name='batch_norm'):
                                       scale=tf.Variable(tf.ones(out_channels), name='scale'),
                                       name=name)[0]
 
+
 def layer_norm(x, name="layer_norm"):
     return tf.contrib.layers.layer_norm(x, center=True, scale=True, trainable=True, scope=name)
 
 
-def dense(batch_input, units, activation=None, kernel_initializer=tf.contrib.layers.xavier_initializer(uniform=False), name="dense"):
-    with tf.variable_scope(name):
-        return tf.layers.dense(inputs=batch_input, units=units, activation=activation, kernel_initializer=kernel_initializer)
+def dense(batch_input, units, activation=None, kernel_initializer=tf.random_normal_initializer(), name="dense"):
+    return tf.layers.dense(inputs=batch_input, units=units, activation=activation, kernel_initializer=kernel_initializer, name=name)
 
 
 def pixel_shuffler(x, block_size=2, name="ps"):
@@ -78,7 +78,7 @@ def pixel_shuffler(x, block_size=2, name="ps"):
         return tf.depth_to_space(x, block_size=block_size)
 
 
-def conv_block(batch_input, out_channels, filter_size=3, filter_init_mode="truncated_normal", stride=2, padding="SAME", mode="cba", activation=leaky_relu, name="conv_block"):
+def conv_block(batch_input, out_channels, filter_size=3, filter_init_mode="he_init", stride=2, padding="SAME", mode="cba", activation=leaky_relu, name="conv_block"):
     with tf.variable_scope(name):
         batch_output = conv(batch_input, out_channels, filter_size,
                             filter_init_mode, stride, padding)
@@ -93,7 +93,7 @@ def conv_block(batch_input, out_channels, filter_size=3, filter_init_mode="trunc
         return batch_output
 
 
-def deconv_block(batch_input, out_channels, filter_size=3, filter_init_mode="truncated_normal", stride=2, padding="SAME", mode="dbda", activation=relu, keep_prob=0.5, name="deconv_block"):
+def deconv_block(batch_input, out_channels, filter_size=3, filter_init_mode="xavier_init", stride=2, padding="SAME", mode="dbda", activation=relu, keep_prob=0.5, name="deconv_block"):
     with tf.variable_scope(name):
         batch_output = deconv(batch_input, out_channels, filter_size,
                               filter_init_mode, stride, padding)
