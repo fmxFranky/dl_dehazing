@@ -67,7 +67,7 @@ def get_train_batch(gt_list, hi_list, batch_idx, batch_size):
     hi_contents = [np.expand_dims(transform.resize(io.imread(img), [256, 256], mode="reflect"), axis=0) for img in hi_list[batch_idx * batch_size:(batch_idx + 1) * batch_size]]
     gt_batch = np.concatenate(gt_contents, axis=0)
     hi_batch = np.concatenate(hi_contents, axis=0)
-    # print(np.mean(np.abs(gt_batch[0] - hi_batch[0])))
+    # print([img for img in gt_list[batch_idx * batch_size:(batch_idx + 1) * batch_size]])
     real_haze_batch = np.concatenate([gt_batch, hi_batch], axis=-1)
     # the value belongs to [0,1]
     return real_haze_batch

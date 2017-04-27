@@ -3,8 +3,9 @@ import random
 import warnings
 
 import numpy as np
-
 import tensorflow as tf
+
+import vgg16
 from losses import *
 from networks import *
 from utils import *
@@ -25,7 +26,6 @@ def get_ckpt_path(train_mode, network_mode, batch_size, learning_rate):
 
 
 def run_trianing():
-
     gt_list, hi_list = get_train_file_lists(train_dir=train_dir)
     real_haze = tf.placeholder(tf.float32, [batch_size, 256, 256, 6], name="real_haze")
     real, haze = real_haze[:, :, :, :3], real_haze[:, :, :, 3:6]
@@ -35,10 +35,10 @@ def run_trianing():
     disc_real, disc_fake = tf.split(tf.squeeze(disc_real_fake), 2)
 
     # get losses
-    pixel_loss, pixel_loss_summary = get_pixel_loss(real, fake, norm="l1", weight=1)
+    # pixel_loss, pixel_loss_summary = get_pixel_loss(real, fake, norm="l1", weight=1)
     feature_loss, feature_loss_summary = get_feature_loss(real, fake, norm="l1", weight=1)
     adv_loss, adv_loss_summary = get_adv_loss(disc_fake, mode=gan_mode, weight=1)
-    gen_loss, gen_loss_summary = get_gen_loss(adv_loss, pixel_loss)
+    gen_loss, gen_loss_summary = get_gen_loss(adv_loss, feature_loss)
     disc_loss, disc_summary = get_disc_loss(disc_real, disc_fake, gan_mode, discriminator, batch_size, real, fake, lam=10)
 
     # get train_ops
@@ -53,20 +53,10 @@ def run_trianing():
     with tf.Session() as sess:
         # saver = tf.train.Saver()
         sess.run(init_op)
-        # sess.run(fake, feed_dict={real_haze: get_train_batch(gt_list, hi_list, 0, batch_size)})
-        for step in range(100):
+        for step in range(total_steps):
             feed_dict = {real_haze: get_train_batch(gt_list, hi_list, step, batch_size)}
-            print(sess.run([pixel_loss], feed_dict))
-            # _ = sess.run(gen_train_op, feed_dict)
-            # for var in all_vars:
-            # print(var)
-            # print(sess.run(feature_loss, feed_dict={real_haze: get_train_batch(gt_list, gt_list, step, batch_size)}))
-    # plt.subplot(1, 3, 1)
-    # plt.imshow(a[0, :, :, 0])
-    # plt.subplot(1,3,2)
-    # plt.imshow(pretrain_batch[1].eval())
-    # plt.subplot(1,3,3)
-    # plt.imshow(pretrain_batch[0].eval()-pretrain_batch[1].eval())
+            fl, _ = sess.run([feature_loss, gen_train_op], feed_dict)
+            print("feature_loss: {}", fl)
 
     # summary_op = tf.summary.merge_all()
     #
