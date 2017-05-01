@@ -14,8 +14,8 @@ if __name__ == '__main__':
     from utils import *
 
     train_dir = "/home/franky/Desktop/train/"
-    gt_list, hi_list = get_file_lists(train_dir)
-    gt_batch, hi_batch = get_batch(gt_list, hi_list, 5)
+    # gt_list, hi_list = get_file_lists(train_dir)
+    # gt_batch, hi_batch = get_batch(gt_list, hi_list, 5)
     batch_size = 2
     total_steps = 100000
     train_dir = "/home/franky/Desktop/train/"
@@ -29,12 +29,14 @@ if __name__ == '__main__':
     # y = conv(x, 64, filter_init_mode="xavier_init")
     with tf.Session() as sess:
         sess.run(tf.global_variables_initializer())
-
-        def get_ckpt_path(train_mode, network_mode, batch_size, learning_rate):
-            return train_mode + "_" + network_mode + "_bs" + batch_size + "_lr" + learning_rate + "/"
-        ckpt_path = get_ckpt_path("pretrain", "generator_ae", str(batch_size), str(learning_rate))
-        if not os.path.exists(log_dir + ckpt_path):
-            os.mkdir(log_dir + ckpt_path)
+        with open("aaaa.txt", "a+") as log:
+            log.writelines("ssssss")
+            log.write("aaaaa")
+        # def get_ckpt_path(train_mode, network_mode, batch_size, learning_rate):
+        #     return train_mode + "_" + network_mode + "_bs" + batch_size + "_lr" + learning_rate + "/"
+        # ckpt_path = get_ckpt_path("pretrain", "generator_ae", str(batch_size), str(learning_rate))
+        # if not os.path.exists(log_dir + ckpt_path):
+        #     os.mkdir(log_dir + ckpt_path)
         # coord = tf.train.Coordinator()
         # threads = tf.train.start_queue_runners(coord=coord)
         # i = 0

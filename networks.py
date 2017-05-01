@@ -1,9 +1,12 @@
 import tensorflow as tf
+
 from layers import *
 
 
-def generator(batch_input, mode="encoder_decoder", skip_connection=True, nb_res_blocks=16, train_mode=True,  name="generator"):
-    with tf.variable_scope(name):
+def generator(batch_input, mode="encoder_decoder", skip_connection=True, nb_res_blocks=16, train_mode=True,  name="generator", reuse=False):
+    with tf.variable_scope(name) as scope:
+        if reuse:
+            scope.reuse_variables()
         if mode is "encoder_decoder":
             # encoder
             encoder_blocks = []
@@ -50,9 +53,9 @@ def generator(batch_input, mode="encoder_decoder", skip_connection=True, nb_res_
 
 
 def discriminator(batch_input, norm_mode="bn", name="discriminator", reuse=False):
-    if reuse is True:
-        tf.get_variable_scope().reuse_variables()
-    with tf.variable_scope(name):
+    with tf.variable_scope(name) as scope:
+        if reuse:
+            scope.reuse_variables()
         out_channels = [64, 128, 256, 512]
         conv_blocks = []
         if norm_mode is "bn":
