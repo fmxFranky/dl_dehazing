@@ -150,7 +150,7 @@ def log_train_information(step, pixel_loss, feature_loss, adv_loss, gen_loss, di
     with open(log_file, "a+") as log:
         if step == 0:
             log.write("step\tpixel_loss\tfeature_loss\tadv_loss\tgen_loss\tdisc_loss\tstep_time_used\tcur_total_time\tmse\tpsnr\tssim\n")
-        print("%d\t%.6f\t%.6f\t%.6f\t%.6f\t%.6f\t%.6f\t%.6f\t%.6f\t%.6f\t%.6f\t\n" % (step, pixel_loss, feature_loss, adv_loss, gen_loss, disc_loss, step_used_time, cur_total_time, mse, psnr, ssim))
+        log.write("%d\t%.6f\t%.6f\t%.6f\t%.6f\t%.6f\t%.6f\t%.6f\t%.6f\t%.6f\t%.6f\n" % (step, pixel_loss, feature_loss, adv_loss, gen_loss, disc_loss, step_used_time, cur_total_time, mse, psnr, ssim))
     if verbose >= 0:
         print("step %d ~~ gen_loss: %.6f, disc_loss: %.6f; step_used_time: %.2fs; cur_total_time: %.2f\n" % (step, gen_loss, disc_loss, step_used_time, cur_total_time))
         if verbose == 1:

@@ -5,77 +5,52 @@ import numpy as np
 from skimage import io, transform
 
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = '3'
+batch_size = 1
+total_steps = 100000
 
+train_dir = "/home/franky/Desktop/train/"
+val_dir = "/home/franky/Desktop/val/"
+log_steps = 500
+
+log_train_dir = "/home/franky/Desktop/log/train/"
+log_val_dir = "/home/franky/Desktop/log/val/"
+train_log_file = "/home/franky/Desktop/log/train_information.txt"
+val_log_file = "/home/franky/Desktop/log/val_information.txt"
+save_dir = "/home/franky/Desktop/save/"
+vgg16model_path = "/home/franky/Desktop/vgg16-20160129.tfmodel"
+gan_mode = "improved_wgan"
+weight_clip = 0.01
+disc_iters = 1 if gan_mode is "lsgan" else 5
+learning_rate = 1e-4 if gan_mode is "wgan" else 5e-5
+validation_mode = False
 if __name__ == '__main__':
     from layers import *
     import tensorflow as tf
-    import networks
     import vgg16
     from utils import *
+    from losses import *
+    from networks import *
+    from skimage import measure
+    import pandas as pd
 
-    train_dir = "/home/franky/Desktop/train/"
-    # gt_list, hi_list = get_file_lists(train_dir)
-    # gt_batch, hi_batch = get_batch(gt_list, hi_list, 5)
-    batch_size = 2
-    total_steps = 100000
-    train_dir = "/home/franky/Desktop/train/"
-    log_dir = "/home/franky/Desktop/log/"
-    log_steps = 100
-    learning_rate = 1e-4
-    # x = tf.random_uniform(minval=0, maxval=255, shape=[10, 256, 256, 3], name="img")
-    # y = networks.discriminator(x, norm_mode="ln")
-    # # z = networks.generator(x)
-    # # b = tf.Variable(1)
-    # y = conv(x, 64, filter_init_mode="xavier_init")
-    with tf.Session() as sess:
-        sess.run(tf.global_variables_initializer())
-        with open("aaaa.txt", "a+") as log:
-            log.writelines("ssssss")
-            log.write("aaaaa")
-        # def get_ckpt_path(train_mode, network_mode, batch_size, learning_rate):
-        #     return train_mode + "_" + network_mode + "_bs" + batch_size + "_lr" + learning_rate + "/"
-        # ckpt_path = get_ckpt_path("pretrain", "generator_ae", str(batch_size), str(learning_rate))
-        # if not os.path.exists(log_dir + ckpt_path):
-        #     os.mkdir(log_dir + ckpt_path)
-        # coord = tf.train.Coordinator()
-        # threads = tf.train.start_queue_runners(coord=coord)
-        # i = 0
-        # try:
-        #     while not coord.should_stop() and i < 1:
-        #         gt, hi = sess.run([gt_batch, hi_batch])
-        #         for j in range(5):
-        #             plt.subplot(5, 2, j * 2 + 1)
-        #             plt.imshow(np.uint8(gt[j, :, :, :]))
-        #             plt.subplot(5, 2, j * 2 + 2)
-        #             plt.imshow(np.uint8(hi[j, :, :, :]))
-        #         i += 1
-        # except Exception as e:
-        #     print("ok")
-        # finally:
-        #     coord.request_stop()
-        # plt.show()
-    #     # sess.run(tf.summary.merge_all())
-        # vars = tf.trainable_variables()
-        # for var in vars:
-        #     print(var.name)
-    # x = io.imread("/home/franky/Desktop/vir_tf1.1_py3.5/projects/dl_dehazing/1_Depth_.bmp")
-    # y = io.imread("/home/franky/Desktop/vir_tf1.1_py3.5/projects/dl_dehazing/1_Image_.bmp")
-    # x = np.exp(-(np.array(x, dtype=np.float32) / 127))
-    # print(x)
-    # x = np.stack([x, x, x], axis=-1)
-    # A = np.array([255, 255, 255], dtype=np.uint8)
-    # y = np.array(y, dtype=np.float32)
-    # z = np.array(y * x + A * (1 - x))
-    # print(z)
-    # plt.figure("1")
-    # plt.imshow(np.uint8(z))
-    # x = transform.resize(x, (256 * 2, 256 * 2), mode="reflect")
-    # x = x * 255
-
-    # print(x)
-    # plt.imshow(x)
-    # io.imsave("./dl_dehazing/aaa.jpg", np.uint8(x))
-    # print("ss")
-    # x = transform.resize(x, (256 * 2, 256 * 2))
-    # io.imshow("b.jpg", x)
+    # real_haze = tf.placeholder(tf.float32, [batch_size, 256, 256, 6], name="real_haze")
+    # real, haze = real_haze[:, :, :, :3], real_haze[:, :, :, 3:6]
+    # fake = generator(real)
+    # real_synth = tf.placeholder(tf.float32, [batch_size, 256, 256, 6], name="real_haze")
+    # real, synth = real_synth[:, :, :, :3], real_synth[:, :, :, 3:6]
+    # feature_loss, feature_loss_summary = get_feature_loss(synth, haze, model_file_type="tfmodel", norm="l1", weight=1)
+    #
+    # with tf.Session() as sess:
+    #     sess.run(tf.global_variables_initializer())
+    #     gt_list, hi_list = get_train_file_lists(train_dir=train_dir, num_epochs=1, shuffle=False)
+    #     synth_list = get_pretrain_file_list( / home/franky/Downloads/)
+    #     for step in range(1):
+    #         train_feed_dict = {real_haze: get_train_batch(gt_list, hi_list, batch_size, step), real_synth: get_pretrain_batch(gt_list, batch_size, step)}
+    #         _haze, _synth, _feature_loss = sess.run([haze, synth, feature_loss], feed_dict=train_feed_dict)
+    #         print(_feature_loss)
+    # if step == 0:
+    # plt.subplot(121)
+    # plt.imshow(enhaze_from_random_transmission(_haze[0]))
+    # plt.subplot(122)
+    # plt.imshow(_synth[0])
     # plt.show()
