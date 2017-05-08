@@ -120,19 +120,19 @@ def get_val_file_lists(val_dir, shuffle=True):
     return val_gt_list, val_hi_list
 
 
-def get_val_batch(val_gt_list, val_hi_list, batch_size, select="ordered", batch_idx=None):
-    if select is "ordered":
-        assert start_idx is not None
-        gt_contents = [np.expand_dims(transform.resize(io.imread(img), [IMG_HEIGHT, IMG_WIDTH], mode="reflect"), axis=0) for img in val_gt_list[batch_idx * batch_size:(batch_idx + 1) * batch_size]]
-        hi_contents = [np.expand_dims(transform.resize(io.imread(img), [IMG_HEIGHT, IMG_WIDTH], mode="reflect"), axis=0) for img in val_hi_list[batch_idx * batch_size:(batch_idx + 1) * batch_size]]
-    elif select is "random":
-        selected_idxs = np.random.shuffle(range(len(val_gt_list)))[:batch_size]
-        gt_contents = [np.expand_dims(transform.resize(io.imread(img), [IMG_HEIGHT, IMG_WIDTH], mode="reflect"), axis=0) for img in [val_gt_list[idx] for idx in selected_idxs]]
-        hi_contents = [np.expand_dims(transform.resize(io.imread(img), [IMG_HEIGHT, IMG_WIDTH], mode="reflect"), axis=0) for img in [val_hi_list[idx] for idx in selected_idxs]]
-    gt_batch = np.concatenate(gt_contents, axis=0)
+def get_val_batch(val_hi_list, batch_size, batch_idx):
+    # if select is "ordered":
+    #     assert start_idx is not None
+    # gt_contents = [np.expand_dims(io.imread(img), axis=0) for img in val_gt_list[batch_idx * batch_size:(batch_idx + 1) * batch_size]]
+    hi_contents = [np.expand_dims(io.imread(img), axis=0) for img in val_hi_list[batch_idx * batch_size:(batch_idx + 1) * batch_size]]
+    # elif select is "random":
+    #     selected_idxs = np.random.shuffle(range(len(val_gt_list)))[:batch_size]
+    #     gt_contents = [np.expand_dims(transform.resize(io.imread(img), [IMG_HEIGHT, IMG_WIDTH], mode="reflect"), axis=0) for img in [val_gt_list[idx] for idx in selected_idxs]]
+    #     hi_contents = [np.expand_dims(transform.resize(io.imread(img), [IMG_HEIGHT, IMG_WIDTH], mode="reflect"), axis=0) for img in [val_hi_list[idx] for idx in selected_idxs]]
+    # gt_batch = np.concatenate(gt_contents, axis=0)
     hi_batch = np.concatenate(hi_contents, axis=0)
-    gt_hi_batch = np.concatenate([gt_batch, hi_batch], axis=-1)
-    return gt_hi_batch
+    # gt_hi_batch = np.concatenate([gt_batch, hi_batch], axis=-1)
+    return hi_batch
 
 
 def load_vgg16tfmodel(model_path, real, fake):

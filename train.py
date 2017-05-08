@@ -11,13 +11,14 @@ from networks import *
 from utils import *
 
 # network parameters
-batch_size = 1
+batch_size = 4
 total_steps = 50010
 
 train_dir = "/home/franky/Desktop/train/"
 val_dir = "/home/franky/Desktop/val/"
 log_steps = 500
 save_steps = 10000
+sum_steps = 100
 
 log_train_dir = "/home/franky/Desktop/log/train/"
 log_val_dir = "/home/franky/Desktop/log/val/"
@@ -25,16 +26,17 @@ train_log_file = "/home/franky/Desktop/log/train_information.txt"
 val_log_file = "/home/franky/Desktop/log/val_information.txt"
 save_dir = "/home/franky/Desktop/save/"
 vgg16model_path = "/home/franky/Desktop/vgg16-20160129.tfmodel"
-gan_mode = "improved_wgan"
+gan_mode = "lsgan"
 weight_clip = 0.01
 disc_iters = 1 if gan_mode is "lsgan" else 5
 learning_rate = 1e-4 if gan_mode is "wgan" else 5e-5
 validation_mode = False
+nb_res_blocks = 8
 
-lam_pl = 1
+lam_pl = 0.999
 lam_fl = 1
-lam_al = 5e-3
-network_mode = "encoder_decoder"
+lam_al = 0.001
+network_mode = "resnet"
 # warnings.filterwarnings("ignore")
 
 
@@ -51,15 +53,15 @@ def get_ckpt_path(gan_mode, network_mode, batch_size, learning_rate, step):
 def run_trianing():
     real_haze = tf.placeholder(tf.float32, [batch_size, 256, 256, 6], name="real_haze")
     real, haze = real_haze[:, :, :, :3], real_haze[:, :, :, 3:6]
-    fake = generator(haze)
+    fake = generator(haze, mode=network_mode, nb_res_blocks=8)
     real_fake = tf.concat([real, fake], axis=-1)
     disc_real_fake = discriminator(real_fake, norm_mode="ln" if gan_mode is "improved_wgan" else "bn", reuse=False)
     disc_real, disc_fake = tf.split(tf.squeeze(disc_real_fake), 2)
     # get losses and summaries
-    pixel_loss, pixel_loss_summary = get_pixel_loss(real, fake, norm="l1", weight=lam_pl)
-    feature_loss, feature_loss_summary = get_feature_loss(real, fake, model_file_type="tfmodel", norm="l1", weight=lam_fl)
+    pixel_loss, pixel_loss_summary = get_pixel_loss(real, fake, norm="l2", weight=lam_pl)
+    # feature_loss, feature_loss_summary = get_feature_loss(real, fake, model_file_type="tfmodel", norm="l1", weight=lam_fl)
     adv_loss, adv_loss_summary = get_adv_loss(disc_fake, mode=gan_mode, weight=lam_al)
-    gen_loss, gen_loss_summary = get_gen_loss(adv_loss, pixel_loss + feature_loss)
+    gen_loss, gen_loss_summary = get_gen_loss(adv_loss, pixel_loss)
     disc_loss, disc_summary = get_disc_loss(disc_real, disc_fake, gan_mode, discriminator, batch_size, real, fake, lam=10)
 
     # get train_ops
@@ -70,29 +72,36 @@ def run_trianing():
         gen_train_op = tf.train.RMSPropOptimizer(learning_rate=5e-5).minimize(gen_loss, var_list=gen_vars, colocate_gradients_with_ops=True)
         disc_train_op = tf.train.RMSPropOptimizer(learning_rate=5e-5).minimize(disc_loss, var_list=disc_vars, colocate_gradients_with_ops=True)
         clip_op = [var.assign(tf.clip_by_value(var, -0.01, 0.01)) for var in disc_vars]
-    else:
+    elif gan_mode is "improved_wgan":
         gen_train_op = tf.train.AdamOptimizer(learning_rate=learning_rate, beta1=0.5, beta2=0.9).minimize(gen_loss, var_list=gen_vars, colocate_gradients_with_ops=True)
         disc_train_op = tf.train.AdamOptimizer(learning_rate=learning_rate, beta1=0.5, beta2=0.9).minimize(disc_loss, var_list=disc_vars, colocate_gradients_with_ops=True)
+    elif gan_mode is "lsgan":
+        gen_train_op = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(gen_loss, var_list=gen_vars, colocate_gradients_with_ops=True)
+        disc_train_op = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(disc_loss, var_list=disc_vars, colocate_gradients_with_ops=True)
 
     summary_op = tf.summary.merge_all()
     # val_writer = tf.summary.FileWriter(log_dir + val_path, sess.graph)
 
     # train
     init_op = tf.global_variables_initializer()
-    with tf.Session() as sess:
+    config = tf.ConfigProto()
+    config.gpu_options.allow_growth = True
+    with tf.Session(config=config) as sess:
         saver = tf.train.Saver()
 
         sess.run(init_op)
+        # saver.restore(sess, "/home/franky/Desktop/save/improved_wgan_encoder_decoder_bs1_lr5e-05/100000_step/model.ckpt")
+
         train_writer = tf.summary.FileWriter(log_train_dir, sess.graph)
 
-        gt_list, hi_list = get_train_file_lists(train_dir=train_dir, num_epochs=1, shuffle=False)
+        gt_list, hi_list = get_train_file_lists(train_dir=train_dir, num_epochs=50, shuffle=True)
         # val_gt_list, val_hi_list = get_val_file_lists(val_dir=val_dir, shuffle=True)
         train_statr_time = time.time()
         for step in range(total_steps):
             step_start_time = time.time()
             train_feed_dict = {real_haze: get_train_batch(gt_list, hi_list, batch_size, step * disc_iters + np.random.randint(0, disc_iters))}
-            merged_summaries, _real, _fake, _, _pixel_loss, _feature_loss, _adv_loss, _gen_loss = sess.run(
-                [summary_op, real, fake, gen_train_op, pixel_loss, feature_loss, adv_loss, gen_loss], feed_dict=train_feed_dict)
+            merged_summaries, _real, _fake, _, _pixel_loss, _adv_loss, _gen_loss = sess.run(
+                [summary_op, real, fake, gen_train_op, pixel_loss, adv_loss, gen_loss], feed_dict=train_feed_dict)
             for i in range(disc_iters):
                 train_feed_dict = {real_haze: get_train_batch(gt_list, hi_list, batch_size, step * disc_iters + i)}
                 _, _disc_loss = sess.run([disc_train_op, disc_loss], feed_dict=train_feed_dict)
@@ -102,11 +111,12 @@ def run_trianing():
             step_used_time = step_end_time - step_start_time
             cur_total_time = step_end_time - train_statr_time
             mse, psnr, ssim = batch_metric(_real, _fake)
-            train_writer.add_summary(merged_summaries, step)
+            if step % sum_steps == 0:
+                train_writer.add_summary(merged_summaries, step)
             if step % log_steps == 0:
-                log_train_information(step, _pixel_loss, _feature_loss, _adv_loss, _gen_loss, _disc_loss, step_used_time, cur_total_time, mse, psnr, ssim, log_file=train_log_file, verbose=0)
+                log_train_information(step, _pixel_loss, 0, _adv_loss, _gen_loss, _disc_loss, step_used_time, cur_total_time, mse, psnr, ssim, log_file=train_log_file, verbose=0)
             if step % save_steps == 0 and step:
-                ckpt_path = get_ckpt_path(gan_mode, network_mode, batch_size, learning_rate, step)
+                ckpt_path = get_ckpt_path(gan_mode, network_mode + str(nb_res_blocks), batch_size, learning_rate, step)
                 saver.save(sess, ckpt_path + "model.ckpt")
             # if validation_mode is True:
             #     val_start_time = time.time()
